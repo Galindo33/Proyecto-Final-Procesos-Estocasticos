@@ -1,6 +1,8 @@
 import pandas as pd     #LIBRERIA PARA MANIPULAR LOS DATOS
 import numpy as np      #LIBRERIA PARA CALCULOS MATEMATICOS
 from scipy.stats import poisson   
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 #FUNCION QUE CONTIENE EL ALGORITMO DE POISSON
 def modelo_poisson(df, columna, umbral):
@@ -22,7 +24,7 @@ def modelo_poisson(df, columna, umbral):
 
     print(f"\n\tLAMBDA ESTIMADO: {lambda_poisson}")
 
-    return lambda_poisson
+    return lambda_poisson, datos
 
 
 #FUNCION QUE CONTIENE EL ALGORITMO DE MARKOV
@@ -124,10 +126,61 @@ print("\n\t", matriz_markov)
 #POISSON 
 #EL RESULTADO NOS DICE CUANTOS EVENTOS SIGNIFICATIVOS OCURREN AL DIA EN PROMEDIO
 #UTILIZANDO COMO REFERENCIA UN UMBRAL DE 0.20
-lambda_poisson = modelo_poisson(datos, "tipo_cambio_fix", 0.20)
+lambda_poisson, datos_con_eventos = modelo_poisson(datos, "tipo_cambio_fix", 0.20)
 
 #EL RESULTADO NOS DICE QUE PROBABILIDAD HAY DE QUE OCURRAN X NUMERO DE 
 #EVENTOS EN DETERMINADO INTERVALO DE TIEMPO
 #PROBABILIDAD DE QUE OCURRAN 3 EVENTOS EN 10 DIAS, EN ESTE CASO.
 probabilidad = poisson.pmf(3, mu=lambda_poisson * 10)
 print("\n\t", probabilidad)
+
+
+# =======================================================
+# --- BLOQUE DE GENERACIÓN GRÁFICA DE LA SIMULACIÓN ---
+# =======================================================
+print("\n\tGenerando gráficos estocásticos... Por favor espera un momento.")
+
+# Preparamos un lienzo con dos gráficas paralelas
+plt.figure(figsize=(16, 7))
+
+# --- GRÁFICA 1: HISTÓRICO Y EVENTOS POISSON ---
+# Usamos un subplot (1 fila, 2 columnas, esta es la número 1)
+plt.subplot(1, 2, 1)
+
+# Dibujamos la línea de tiempo del tipo de cambio (azul)
+plt.plot(datos.index, datos["tipo_cambio_fix"], label="TIEFIX Banxico", color="royalblue", alpha=0.6, linewidth=1.5)
+
+# Filtramos los datos que sí fueron eventos Poisson (salto > 0.20)
+eventos = datos_con_eventos[datos_con_eventos["evento"] == True]
+
+# Marcamos los eventos con puntitos rojos (dispersión)
+plt.scatter(eventos.index, eventos["tipo_cambio_fix"], color="red", label="Saltos Significativos (> 0.20 MXN)", s=20, zorder=5)
+
+# Títulos y ejes
+plt.title("Evolución del Tipo de Cambio y Eventos de Poisson Detectados")
+plt.xlabel("Registros (Tiempo)")
+plt.ylabel("Precio del Dólar (MXN)")
+plt.legend(loc="upper left")
+plt.grid(True, alpha=0.3)
+
+
+# --- GRÁFICA 2: MAPA DE CALOR DE MARKOV ---
+# Usamos el subplot número 2
+plt.subplot(1, 2, 2)
+
+# Usamos Seaborn para crear un mapa de calor (heatmap) estético de la matriz
+# annot=True pone los números decimales, cmap='YlGnBu' es el estilo de color (amarillo-verde-azul)
+sns.heatmap(matriz_markov, annot=True, cmap="YlGnBu", fmt=".4f", cbar=True, square=True)
+
+# Títulos y ejes
+plt.title("Mapa de Calor: Matriz de Transición de Estados (Cadenas de Markov)")
+plt.ylabel("Estado Actual ($X_t$)")
+plt.xlabel("Estado Siguiente ($X_{t+1}$)")
+
+
+# Asegurar que se acomoden bien los elementos y títulos
+plt.tight_layout()  
+
+# !!! COMANDO MÁS IMPORTANTE !!! Muestra la ventana y pausa el programa para que no se cierre
+print("\n\t[GRÁFICOS LISTOS] Se ha abierto una ventana con los gráficos estocásticos.")
+plt.show(block=True)
